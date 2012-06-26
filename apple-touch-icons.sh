@@ -1,31 +1,66 @@
 #!/usr/bin/env bash
 
+# Script for automatically creating 
+# apple-touch-icons and the favicon file
+# using ImageMagick
+#
+# Usage:
+# ======
+#
+# Use the file apple-touch-icon.png as master
+# for the derived icons:
+#
+#	./apple-touch-icons.sh
+#
+# Pass a specific file to be used as master:
+#
+#	./apple-touch-icons.sh /home/john/icon.svg
+#
+
 bold=`tput bold`
 norm=`tput sgr0`
 
-original="./apple-touch-icon.png"
+base_touch_icon="./apple-touch-icon.png"
 
-if [[ -d $original ]]; then
-	echo "Could not find apple-touch-icon.png." >&2
+# If a parameter is given, use it as master-file.
+# All occurences of $@ or $original are embraced
+# by apostrophes to support file names with spaces.
+if [ "$@" ]; then
+	original="$@"
+else
+	original=$base_touch_icon
+fi
+
+# Does the original touch-icon exist?
+if [ ! -f "$original" ]; then
+	echo "Could not find $original." >&2
 	exit 1
 fi
 
-echo -n "Precomposed? [y/n] "
+echo -n "Precomposed? (If precomposed, Apple-devices will not add rounded corners and gloss-effect) [y/n] "
 read precomposed
 
 if [ $precomposed == "y" ]; then
-	icon144="apple-touch-icon-144x144-precomposed.png"
-	icon114="apple-touch-icon-114x114-precomposed.png"
-	icon72="apple-touch-icon-72x72-precomposed.png"
-	icon57="apple-touch-icon-57x57-precomposed.png"
-else
-	icon144="apple-touch-icon-144x144.png"
-	icon114="apple-touch-icon-114x114.png"
-	icon72="apple-touch-icon-72x72.png"
-	icon57="apple-touch-icon-57x57.png"
+	appendix="-precomposed"
 fi
-cp apple-touch-icon.png apple-touch-icon-precomposed.png
-convert -resize 144x144 apple-touch-icon.png $icon144
-convert -resize 114x114 apple-touch-icon.png $icon114
-convert -resize 72x72 apple-touch-icon.png $icon72
-convert -resize 57x57 apple-touch-icon.png $icon57
+
+for size in 144 114 72 57
+do
+	/usr/bin/convert			\
+		-resize $size"x"$size		\
+		"$original"			\
+		apple-touch-icon-$size"x"$size$appendix.png
+done
+
+# Copy the 57x57 sized icon to use as base,
+# if not already there:
+if [ "$original" != "$base_icon" ]; then
+	/bin/cp apple-touch-icon-57x57$appendix.png $base_touch_icon
+fi
+
+echo -n "Generate favicon? [y/n] "
+read favicon
+
+if [ $favicon == "y" ]; then
+	/usr/bin/convert -resize 16x16 "$original" favicon.ico
+fi
